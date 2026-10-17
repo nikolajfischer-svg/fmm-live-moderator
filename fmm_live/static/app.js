@@ -372,7 +372,7 @@ function ensureStream() {
     } else if (p.type === "handled") {
       const ev = EVENTS.get(p.id); if (ev) { ev.handled = 1; renderTab(); }
     } else if (p.type === "session_end") { toast("LIVE beendet - Bericht unter „Berichte“", 5000); }
-    else if (p.type === "revoked") { ES.close(); ES = null; try { localStorage.removeItem("fmm_token"); } catch (e) {} renderNoToken("Dieser Zugangslink wurde von der Agentur deaktiviert. Bitte frage nach einem neuen Link."); }
+    else if (p.type === "revoked") { ES.close(); ES = null; try { localStorage.removeItem("fmm_token"); } catch (e) {} renderNoToken("Dieser Zugangslink wurde deaktiviert, weil ein neuer Link erzeugt wurde. Bitte öffne den neuen Link."); }
   };
   ES.onopen = () => loadEvents().then(renderTab);
 }

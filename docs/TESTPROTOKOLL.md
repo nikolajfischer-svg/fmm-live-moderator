@@ -1,5 +1,32 @@
 # Testprotokoll
 
+## Qualitätskontrolle v1.1.1 (17.10.2026), Sicht eines fremden Streamers
+
+### BESTANDEN (tatsächlich getestet)
+- **Einstiegsseite (öffentlich, GitHub Pages)** im frischen iPhone-Profil (WebKit, keine Anmeldungen): lädt, alle Inhalte vorhanden, kein seitliches Scrollen, keine Platzhalter. Alle Links erreichbar (Anthropic-Konsole, Render-Deploy, Anleitung).
+- **Render-Deploy-Button:** führt zu Renders Anmeldung und danach direkt zu „Blueprint anlegen“ mit diesem Repository. `render.yaml` ist öffentlich abrufbar.
+- **Render-Build nachgestellt:** frische Kopie aus Git, neue Python-3.12-Umgebung, nur `requirements.txt`, Renders Startbefehl, Port 10000, keine persönlichen Zugangsdaten. Build in 22 s, alle Dateien vorhanden, Server startet.
+- **Datenbank:** wird beim ersten Start auf dem leeren Speicher angelegt.
+- **Fehlender KI-Schlüssel:** verständlicher Hinweis mit Weg (Render → Environment). Der Moderator arbeitet mit Regeln weiter.
+- **Neustart:** Zugang, Einstellungen und Daten bleiben erhalten. Eine erneute Übernahme ist nicht möglich.
+- **Zugriffsschutz:** Ersteinrichtung nur einmal; Fremde ohne Link sehen nur einen Hinweis; gefälschte Links abgewiesen; Streamer-Link ohne Admin-Rechte; Admin nur mit Schlüssel; Widerruf sofort wirksam (auch offene Live-Verbindungen).
+- **Datentrennung:** eigener Server je Streamer. Zusätzlich im Mehrmandanten-Modus getestet: Streamer B sieht keine Daten von A.
+- **Echter TikTok-LIVE-Chat (nur lesen, tonlos):** automatische Verbindung in 3–5 s, echte Kommentare kommen an. Nach hartem Verbindungsabbruch selbstständig wieder verbunden in 13 s, **0 doppelte Kommentare**, ein durchgehender Bericht.
+- **KI (Claude Haiku 5.5):** 15/15 typische deutsche Fälle richtig (Beleidigung, Hetze, Drohung, Belästigung, Spam, Selbstgefährdung, Manipulationsversuch, Fragen), zweimal in Folge. Auf echtem Chat keine Fehlalarme mehr bei harmlosen fremdsprachigen Kommentaren.
+- **iPhone-Durchlauf (WebKit, iPhone 15):** Ersteinrichtung → 6 Schritte → Bot aktiv → Live-Ansicht mit echten Kommentaren → Statuszähler → Berichte → Einstellungen → Anleitung → Neu laden → Bot aus. Keine CSP- oder JavaScript-Fehler.
+- **Fehlerfälle auf dem iPhone:** ungültiger oder zu langer Benutzername, unbekanntes TikTok-Konto, gefälschter Link, Fremder ohne Link: jeweils verständliche deutsche Meldung.
+- **Kosten/Sicherheit:** keine Schlüssel im öffentlichen Repository (gesamte Historie geprüft); keine persönlichen Testdaten veröffentlicht; Agentur ohne laufende Kosten (öffentliches Repo, Pages kostenlos); keine Zahlungsdaten an die Agentur; die App verspricht keine automatischen TikTok-Moderationsaktionen.
+- 29 automatische Tests grün.
+
+### NICHT GETESTET (ohne externe Registrierung bzw. echten Cloud-Account nicht prüfbar)
+- **Echter Deploy bei Render** (Build, Speicher-Volume, Gesundheitsprüfung und Ersteinrichtung auf `*.onrender.com`). Nachgestellt und bestanden, aber nicht auf Render selbst ausgeführt.
+- **TikTok-Chat von einer Rechenzentrums-IP.** Alle echten Tests liefen über einen privaten Anschluss. Ob TikTok Render-IPs drosselt, zeigt sich erst beim ersten Deploy. Ausweichwege: `SIGN_API_KEY` (Euler, kostenlos) bzw. `TIKTOK_PROXY`.
+- **Anthropic-Registrierung, Guthabenkauf und Schlüsselerzeugung** aus Sicht eines neuen Nutzers. Die Schritte sind beschrieben, die Oberflächen der Anbieter können abweichen.
+- **Echtes iPhone mit Safari** (nur WebKit-Emulation): Home-Bildschirm-Symbol, „Bildschirm wach halten“, Ton bei dringenden Hinweisen.
+
+### FEHLGESCHLAGEN
+- Keine offenen Fehler. Während der QS gefunden und behoben: doppelter Kommentar nach Wiederverbindung, geteilter Bericht bei kurzem Abbruch, „Fehler 422“ statt verständlicher Meldung, schwankende Einstufung sexualisierter Aufforderungen, Fehlalarme bei fremdsprachigen Kommentaren, veraltete Agentur-Texte im Selbst-Betrieb.
+
 ## v1.1.0 (17.10.2026): Self-Hosting je Streamer
 - 28 automatische Tests grün, darunter: Ersteinrichtung, zweite Übernahme abgelehnt, abgelaufenes Fenster nur mit ADMIN_TOKEN, im Agenturmodus gesperrt
 - Unabhängige Sicherheitsprüfung (kein kritischer Befund) umgesetzt: Widerruf trennt offene Live-Verbindungen, CSP/HSTS, Größen- und Ratenlimits, Prompt-Injection-Isolation, Admin nur per Header, secure_delete, bereinigte Fehlertexte, Volume-Rechte

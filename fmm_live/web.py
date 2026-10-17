@@ -230,7 +230,7 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
     def auth(request: Request, authorization: str | None = Header(default=None)) -> tuple[dict, str]:
         found = db.streamer_by_token(_token_from(request, authorization))
         if not found:
-            raise HTTPException(401, "Zugangslink ungültig oder abgelaufen. Bitte die Agentur um einen neuen Link bitten.")
+            raise HTTPException(401, "Zugangslink ungültig oder abgelaufen. Einen neuen Link erzeugst du über /admin deines Moderators (Schlüssel: ADMIN_TOKEN bei Render) oder über deine Agentur.")
         return found
 
     def streamer_only(ctx: tuple[dict, str] = Depends(auth)) -> dict:
@@ -275,8 +275,8 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
         page = (STATIC / "datenschutz.html").read_text(encoding="utf-8")
         contact = ", ".join(x for x in (settings.operator_address, settings.operator_email) if x)
         page = (page.replace("{{OPERATOR_NAME}}", html.escape(settings.operator_name))
-                    .replace("{{OPERATOR_CONTACT}}", html.escape(contact or "Kontakt über die betreuende Agentur"))
-                    .replace("{{OPERATOR_EMAIL}}", html.escape(settings.operator_email or "die betreuende Agentur"))
+                    .replace("{{OPERATOR_CONTACT}}", html.escape(contact or "Kontakt über den Betreiber dieses Moderators"))
+                    .replace("{{OPERATOR_EMAIL}}", html.escape(settings.operator_email or "den Betreiber dieses Moderators"))
                     .replace("{{HOSTING_INFO}}", html.escape(settings.hosting_info or "Cloud-Hosting in der EU (Frankfurt)")))
         return HTMLResponse(page, headers={"Cache-Control": "no-cache"})
 

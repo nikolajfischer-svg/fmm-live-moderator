@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "moderator-lokal",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": ["-m", "fmm_live.web"],
+      "env": {"PORT": "8765", "HOST": "127.0.0.1"},
+      "port": 8765
+    }
+  ]
+}

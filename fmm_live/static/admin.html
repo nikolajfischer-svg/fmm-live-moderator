@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Agentur-Dashboard</title>
+<link rel="stylesheet" href="/static/style.css">
+<style>.wrap{max-width:1100px}</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="logo">M</div><div><b>FMM Live Moderator</b><br><small>Agentur-Dashboard</small></div><span class="v" id="ver"></span></div>
+  <div id="login" class="card hidden">
+    <h2>Anmelden</h2>
+    <label for="tok">Admin-Schlüssel</label>
+    <input type="text" id="tok" autocomplete="off" spellcheck="false">
+    <div class="actions"><button class="primary" id="go">Anmelden</button></div>
+    <p class="muted">Der Admin-Schlüssel ist der Wert ADMIN_TOKEN aus der Server-Konfiguration. Er bleibt nur in diesem Browser-Tab gespeichert.</p>
+  </div>
+  <div id="main" class="hidden">
+    <div class="card"><div class="grid" id="kpis"></div></div>
+    <div class="card">
+      <h2>Neuen Streamer anlegen</h2>
+      <div class="row"><input type="text" id="nn" placeholder="Name des Streamers (z. B. Lena)" maxlength="80">
+        <select id="np" style="flex:none;width:auto"><option value="standard">Standard</option><option value="familienfreundlich">Familienfreundlich</option><option value="locker">Locker</option></select>
+        <button class="primary" id="nb" style="flex:none">Anlegen</button></div>
+      <div id="nr"></div>
+    </div>
+    <div class="card scroll-x"><h2>Streamer &amp; Bots</h2><table id="tbl"></table></div>
+    <div class="card scroll-x"><h2>Letzte technische Fehler</h2><table id="err"></table></div>
+    <p class="muted"><button class="small ghost" id="out">Abmelden</button></p>
+  </div>
+</div>
+<div id="toast" class="toast hidden"></div>
+<script src="/static/admin.js"></script>
+</body>
+</html>

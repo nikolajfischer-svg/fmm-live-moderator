@@ -1,4 +1,13 @@
-# Testprotokoll v1.0.0 (17.10.2026)
+# Testprotokoll
+
+## v1.1.0 (17.10.2026): Self-Hosting je Streamer
+- 28 automatische Tests grün, darunter: Ersteinrichtung, zweite Übernahme abgelehnt, abgelaufenes Fenster nur mit ADMIN_TOKEN, im Agenturmodus gesperrt
+- Unabhängige Sicherheitsprüfung (kein kritischer Befund) umgesetzt: Widerruf trennt offene Live-Verbindungen, CSP/HSTS, Größen- und Ratenlimits, Prompt-Injection-Isolation, Admin nur per Header, secure_delete, bereinigte Fehlertexte, Volume-Rechte
+- iPhone-Durchlauf mit Safari-Engine (WebKit, iPhone 15): Ersteinrichtung → Assistent → Bot aktiv → echter LIVE-Chat (@p4wnyhof) → Berichte → Einstellungen → Anleitung → Neu laden: **alles OK**, keine CSP- oder JS-Fehler
+- Rauchtest-Skript (wie in der Prüfstraße), lokal: Ersteinrichtung, Rechte, CSP, TikTok-Diagnose, Neustart mit Datenerhalt: **OK**
+- Offen: Container-Build und TikTok-Test von einer Rechenzentrums-IP. Läuft automatisch in GitHub Actions, sobald das Repository veröffentlicht ist. Ein echter Render-Deploy ist erst mit dem ersten Streamer-Konto möglich.
+
+## v1.0.0 (17.10.2026)
 
 ## Automatische Tests: 18/18 grün
 `.venv\Scripts\python.exe -m pytest -q`
@@ -26,6 +35,5 @@
 - Agentur-Dashboard: Kennzahlen, Status LIVE, Kosten, Streamer anlegen mit WhatsApp-Text
 
 ## Noch offen (erst nach dem Online-Gang möglich)
-- [ ] Chat-Verbindung von der Cloud-IP (Fly.io Frankfurt) prüfen. Siehe GO_LIVE_AGENTUR.md, Abschnitt C
 - [ ] Assistent auf echtem iPhone mit Safari durchspielen (Home-Bildschirm-Symbol, Bildschirm wach halten)
 - [ ] Erstes echtes LIVE des Pilot-Streamers begleiten

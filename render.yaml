@@ -1,0 +1,33 @@
+# Ein-Klick-Bereitstellung fuer Streamer: https://render.com/deploy?repo=<dieses Repo>
+# Jeder Streamer bekommt seinen eigenen Server, eigenen Speicher und eigene, zufaellig erzeugte Schluessel.
+services:
+  - type: web
+    name: fmm-live-moderator
+    runtime: docker
+    plan: 0.5c-512mb          # kleinster Dauerbetrieb-Tarif (schlaeft nicht ein)
+    region: frankfurt
+    healthCheckPath: /healthz
+    autoDeployTrigger: off     # Updates nur bewusst (Manual Deploy), nie ungefragt
+    disk:
+      name: moderator-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: ANTHROPIC_API_KEY  # wird beim Einrichten abgefragt (eigener Schluessel des Streamers)
+        sync: false
+      - key: ADMIN_TOKEN        # wird automatisch zufaellig erzeugt, nur im eigenen Render-Konto sichtbar
+        generateValue: true
+      - key: SELF_HOSTED
+        value: "true"
+      - key: DATA_DIR
+        value: /data
+      - key: LM_MODEL
+        value: claude-haiku-5-5
+      - key: AI_DAILY_BUDGET_USD
+        value: "2"
+      - key: RETENTION_DAYS
+        value: "30"
+      - key: HOSTING_INFO
+        value: Render Services, Inc., Rechenzentrum Frankfurt am Main
+      - key: OPERATOR_NAME
+        value: der Streamer, der diesen Moderator betreibt

@@ -1,47 +1,34 @@
 # FMM Live Moderator
 
-KI-Chatmoderation für TikTok LIVE, als Cloud-Webanwendung für die Streamer der Agentur. Der Streamer öffnet einen persönlichen Link, richtet in ca. 5 Minuten alles ein und kann danach **nur mit dem iPhone** live gehen. Der Moderator läuft in der Cloud.
+Dein eigener KI-Moderator für TikTok LIVE. Er läuft in **deiner eigenen Cloud**, auch wenn du nur mit dem iPhone streamst und dein PC aus ist.
 
-- **Streamer:** `/app#t=<token>`: Einrichtungsassistent, Live-Ansicht (Wichtig / Fragen / Alle), Berichte, Einstellungen
-- **Moderator (Vertrauensperson):** `/app#m=<token>`: nur lesen
-- **Agentur:** `/admin`: Streamer anlegen, Links, Status, Version, Kosten, Fehler
-- **Anleitung:** `/anleitung` · **Datenschutz:** `/datenschutz`
+**➡️ Einrichtung für Streamer (Schritt für Schritt, auf Deutsch): [ANLEITUNG.md](ANLEITUNG.md)**
 
-## Dokumentation
-| Datei | Inhalt |
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/__OWNER__/fmm-live-moderator)
+
+- Erkennt Beleidigungen, Hass, sexuelle Belästigung, Drohungen, Spam, Links, Telefonnummern und Hinweise auf Selbstgefährdung. Hebt Fragen an dich hervor, mit Antwortidee.
+- Empfiehlt konkret, was zu tun ist („stummschalten empfohlen“). Ausgeführt wird in der TikTok-App: TikTok bietet keine offizielle Schnittstelle für automatische Moderation. Eine fertige Wortliste für TikToks eingebauten Schlüsselwortfilter liefert die App mit.
+- Moderator-Link für eine Vertrauensperson, Berichte nach jedem LIVE.
+- Kein TikTok-Passwort, kein Login. Gelesen wird nur der öffentliche LIVE-Chat.
+
+## Kosten (bezahlt der Streamer direkt beim Anbieter)
+| Dienst | Kosten |
 |---|---|
-| [docs/GO_LIVE_AGENTUR.md](docs/GO_LIVE_AGENTUR.md) | Online-Gang, Abnahme, Streamer einladen, Betrieb |
-| [docs/FUNKTIONEN.md](docs/FUNKTIONEN.md) | Was wirklich unterstützt wird und was bewusst nicht |
-| [docs/KOSTEN.md](docs/KOSTEN.md) | Laufende Kosten, gemessene KI-Kosten, Kostenschutz |
-| [docs/ARCHITEKTUR.md](docs/ARCHITEKTUR.md) | Cloud statt Installer, Mandantentrennung, Skalierung |
-| [docs/TESTPROTOKOLL.md](docs/TESTPROTOKOLL.md) | Durchgeführte Tests und Befunde |
-| [docs/WHATSAPP_NACHRICHT.md](docs/WHATSAPP_NACHRICHT.md) | Text für den Versand |
+| Render-Server (`0.5c-512mb`, Frankfurt, schläft nie) + 1 GB Speicher | ca. 7,25 USD/Monat |
+| Anthropic-KI (Standard: Claude Haiku 5.5, Tageslimit 2 USD) | meist 1–3 USD/Monat, Guthaben ab 5 USD |
 
-## Lokal starten
+Details: [docs/KOSTEN.md](docs/KOSTEN.md) · Funktionsumfang: [docs/FUNKTIONEN.md](docs/FUNKTIONEN.md) · Weitergabe durch die Agentur: [docs/VERTEILUNG.md](docs/VERTEILUNG.md)
+
+## Sicherheit
+- Jeder Streamer betreibt **seinen eigenen Server**. Es gibt keine gemeinsame Datenbank.
+- `ADMIN_TOKEN` erzeugt Render für jeden Server automatisch und zufällig. Den KI-Schlüssel trägt der Streamer selbst ein, beides ist nur in seinem Render-Konto sichtbar.
+- Den neuen Server übernimmt beim ersten Aufruf genau eine Person, und nur in den ersten 6 Stunden. Danach geht das nur noch mit `ADMIN_TOKEN`.
+- Content-Security-Policy, HSTS, Ratenlimits, widerrufbare Links. Chat-Daten werden nach 30 Tagen gelöscht.
+
+## Für Entwickler
 ```powershell
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt pytest httpx
-copy .env.example .env   # ADMIN_TOKEN, ANTHROPIC_API_KEY, PUBLIC_URL=http://localhost:8000 eintragen
-.venv\Scripts\python -m fmm_live.web
+python -m venv .venv; .venv\Scripts\pip install -r requirements.txt pytest httpx
+.venv\Scripts\python -m pytest -q
+$env:SELF_HOSTED="true"; .venv\Scripts\python -m fmm_live.web     # http://localhost:8000/app
 ```
-Dann `http://localhost:8000/admin` öffnen.
-
-## Tests
-```powershell
-.venv\Scripts\python -m pytest -q                                   # 18 automatische Tests, ohne Kosten
-.venv\Scripts\python scripts\ki_praxistest.py claude-haiku-5-5      # echte KI, < 1 Cent
-.venv\Scripts\python scripts\live_lesetest.py <live-benutzer> 60    # echter TikTok-LIVE, nur lesen
-```
-
-## Aufbau
-```
-fmm_live/
-  config.py    Umgebungsvariablen
-  db.py        SQLite, mandantengetrennt, Token nur als Hash
-  rules.py     Regel-Engine, Presets, Schlüsselwortfilter-Export
-  ai.py        Claude-Klassifizierer (strukturierte JSON-Ausgabe), Offline-Fallback
-  pipeline.py  Regeln → KI-Stapel → Speichern → Live-Push, Kostenbremse
-  live.py      TikTok-Lesezugang, BotManager (Wachdienst je Streamer)
-  web.py       FastAPI: Seiten, Streamer-, Moderator- und Admin-API, SSE
-  static/      Oberfläche (ohne Build-Schritt)
-```
+Aufbau: `fmm_live/` (FastAPI, Regel-Engine, Claude-Klassifizierer, TikTok-Lesezugang, Oberfläche ohne Build-Schritt), `render.yaml` (Ein-Klick-Bereitstellung), `Dockerfile`, `.github/workflows/ci.yml` (Tests, Container-Test, optional TikTok-Test von einer Rechenzentrums-IP).

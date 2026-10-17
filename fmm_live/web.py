@@ -58,6 +58,11 @@ class NewStreamerIn(BaseModel):
     preset: str = "standard"
 
 
+class ClaimIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    admin_key: str = Field(default="", max_length=200)
+
+
 class DiagnoseIn(BaseModel):
     tiktok_user: str = Field(min_length=2, max_length=60)
     seconds: int = Field(default=20, ge=5, le=60)
@@ -279,6 +284,39 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
     @app.get("/healthz")
     async def health():
         return {"ok": True, "version": VERSION, "uptime_s": int(time.time() - manager.started_at)}
+
+    # ---------------------------------------------------------------- Ersteinrichtung (eigener Server je Streamer)
+    first_start = float(db.meta_setdefault("first_start", str(time.time())))
+
+    def claim_state() -> dict:
+        if not settings.self_hosted or db.count_streamers() > 0:
+            return {"claimable": False, "needs_key": False}
+        open_window = time.time() - first_start < settings.claim_window_hours * 3600
+        return {"claimable": True, "needs_key": not open_window}
+
+    @app.get("/api/claim-status")
+    async def claim_status():
+        return {**claim_state(), "self_hosted": settings.self_hosted, "version": VERSION,
+                "ai_available": isinstance(manager.classifier, ClaudeClassifier)}
+
+    @app.post("/api/claim")
+    async def claim(data: ClaimIn):
+        """Der erste Aufruf eines frisch gestarteten eigenen Servers macht den Aufrufer zum Besitzer.
+        Nach Ablauf des Zeitfensters nur noch mit dem ADMIN_TOKEN (steht beim Hosting-Anbieter)."""
+        limiter.hit("claim", 10, 300)
+        state = claim_state()
+        if not state["claimable"]:
+            raise HTTPException(409, "Dieser Moderator ist bereits eingerichtet. Öffne deinen persönlichen Link.")
+        if state["needs_key"]:
+            if not settings.admin_token or not hmac.compare_digest(data.admin_key.strip().encode(),
+                                                                    settings.admin_token.encode()):
+                raise HTTPException(403, "Das Einrichtungsfenster ist abgelaufen. Bitte den Admin-Schlüssel "
+                                         "(ADMIN_TOKEN) aus deinem Render-Konto eingeben.")
+        sid, token = db.create_streamer(data.name, merged_settings({}))
+        if db.count_streamers() > 1:  # gleichzeitige Anfragen: nur die erste gewinnt
+            db.delete_streamer_data(sid)
+            raise HTTPException(409, "Dieser Moderator ist bereits eingerichtet.")
+        return {"ok": True, "token": token, "link": invite_link(token)}
 
     # ---------------------------------------------------------------- Streamer-API
     @app.get("/api/me")

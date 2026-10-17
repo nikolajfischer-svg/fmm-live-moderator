@@ -49,6 +49,8 @@ class Settings:
     operator_address: str = ""
     operator_email: str = ""
     hosting_info: str = ""
+    self_hosted: bool = False
+    claim_window_hours: float = 6.0
     extra: dict = field(default_factory=dict)
 
     @property
@@ -77,7 +79,8 @@ def load_settings() -> Settings:
         model=model,
         effort=os.environ.get("LM_EFFORT", "low").strip() or "low",
         sign_api_key=os.environ.get("SIGN_API_KEY", "").strip(),
-        public_url=os.environ.get("PUBLIC_URL", "http://localhost:8000").rstrip("/"),
+        public_url=(os.environ.get("PUBLIC_URL") or os.environ.get("RENDER_EXTERNAL_URL")
+                    or "http://localhost:8000").rstrip("/"),
         ai_enabled=_bool("AI_ENABLED", True),
         tiktok_enabled=_bool("TIKTOK_ENABLED", True),
         live_poll_seconds=int(os.environ.get("LIVE_POLL_SECONDS", "60")),
@@ -92,4 +95,6 @@ def load_settings() -> Settings:
         operator_address=os.environ.get("OPERATOR_ADDRESS", "").strip(),
         operator_email=os.environ.get("OPERATOR_EMAIL", "").strip(),
         hosting_info=os.environ.get("HOSTING_INFO", "").strip(),
+        self_hosted=_bool("SELF_HOSTED", False),
+        claim_window_hours=float(os.environ.get("CLAIM_WINDOW_HOURS", "6")),
     )

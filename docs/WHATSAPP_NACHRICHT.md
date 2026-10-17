@@ -1,19 +1,18 @@
-# WhatsApp-Nachricht an den Streamer
-
-Das Agentur-Dashboard füllt diesen Text mit dem persönlichen Link automatisch aus („Per WhatsApp senden“). Vorlage zum manuellen Kopieren:
+# WhatsApp-Nachricht (für alle Streamer gleich)
 
 ---
 
-Hi [Name]! 👋 Hier ist dein persönlicher Zugang zum FMM Live Moderator - deiner KI-Chatmoderation für TikTok LIVE.
+Hi! 👋 Hier ist dein eigener **KI-Moderator für TikTok LIVE**.
 
-1. Link antippen: [persönlicher Link]
-2. Den Schritten folgen (ca. 5 Minuten)
-3. Fertig - der Moderator startet bei jedem LIVE automatisch.
+Er liest deinen LIVE-Chat mit, erkennt Beleidigungen, Spam, Belästigung und wichtige Fragen und sagt dir sofort, was zu tun ist. Er läuft in deiner eigenen Cloud, also auch wenn du nur mit dem iPhone streamst.
 
-Du brauchst keine App und kein Passwort. Gib dein TikTok-Passwort niemals weiter - auch nicht an uns. Bitte leite diesen Link nicht weiter, er ist dein persönlicher Zugang. Bei Fragen melde dich einfach!
+👉 Hier einrichten (ca. 15 Min., alles im Browser): __LINK__
+
+Gut zu wissen:
+• Du brauchst kein TikTok-Passwort und musst nichts installieren.
+• Du bezahlst den Server (ca. 7 USD/Monat) und die KI (meist 1–3 USD/Monat) direkt beim Anbieter und kannst jederzeit kündigen.
+• Wir sehen weder deine Zahlungsdaten noch deine Passwörter.
+
+Fragen? Schreib mir einfach! 🙌
 
 ---
-
-Optionale zweite Nachricht mit der Anleitung:
-
-> Falls du nachlesen möchtest, hier die Anleitung (auch zum Ausdrucken): https://[app].fly.dev/anleitung

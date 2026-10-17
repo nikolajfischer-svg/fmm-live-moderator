@@ -274,3 +274,31 @@ def test_mod_does_not_get_keywords_or_touch_last_seen(setup):
     tm = client.post("/api/mod-link", headers=auth(t)).json()["link"].split("#m=")[1]
     me = client.get("/api/me", headers=auth(tm)).json()
     assert me["keyword_filter"] == []
+
+
+def test_self_hosted_claim(tmp_path, fake_classifier):
+    st = make_settings(tmp_path, self_hosted=True)
+    app = create_app(st, source_factory=lambda u: FakeSource(u, []), classifier=fake_classifier)
+    with TestClient(app) as client:
+        assert client.get("/api/claim-status").json()["claimable"] is True
+        r = client.post("/api/claim", json={"name": "Lena"}).json()
+        assert r["ok"] and r["link"].startswith("https://mod.example/app#t=")
+        assert client.get("/api/me", headers=auth(r["token"])).json()["role"] == "streamer"
+        # zweiter Versuch (z. B. Fremder) scheitert, Status nicht mehr übernehmbar
+        assert client.post("/api/claim", json={"name": "Fremd"}).status_code == 409
+        assert client.get("/api/claim-status").json()["claimable"] is False
+
+
+def test_claim_window_expired_needs_admin_key(tmp_path, fake_classifier):
+    st = make_settings(tmp_path, self_hosted=True, claim_window_hours=0)
+    app = create_app(st, source_factory=lambda u: FakeSource(u, []), classifier=fake_classifier)
+    with TestClient(app) as client:
+        assert client.get("/api/claim-status").json()["needs_key"] is True
+        assert client.post("/api/claim", json={"name": "X"}).status_code == 403
+        assert client.post("/api/claim", json={"name": "X", "admin_key": ADMIN}).json()["ok"]
+
+
+def test_claim_disabled_in_agency_mode(setup):
+    client, *_ = setup
+    assert client.get("/api/claim-status").json()["claimable"] is False
+    assert client.post("/api/claim", json={"name": "X"}).status_code == 409

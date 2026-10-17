@@ -55,7 +55,14 @@ function fmtDate(ts) { return new Date(ts * 1000).toLocaleString("de-DE", { day:
 // ------------------------------------------------------------------ Start
 async function boot() {
   TOKEN = readToken();
-  if (!TOKEN) return renderNoToken();
+  if (!TOKEN) {
+    try {
+      const cs = await (await fetch("/api/claim-status")).json();
+      if (cs.claimable) return renderClaim(cs);
+      if (cs.self_hosted) return renderNoToken("Öffne deinen Moderator über das Symbol auf deinem Home-Bildschirm bzw. dein Lesezeichen. Zugang verloren? Render → dein Dienst → Environment → ADMIN_TOKEN kopieren, dann diese Adresse mit /admin am Ende öffnen und „Neuer Link“ wählen.");
+    } catch (e) {}
+    return renderNoToken();
+  }
   try {
     ME = await api("GET", "/api/me");
   } catch (e) {
@@ -70,6 +77,28 @@ async function boot() {
   if (ME.role === "streamer" && !ME.streamer.setup_done) { STEP = ME.streamer.tiktok_user ? 2 : 1; renderWizard(); }
   else renderDash();
   setInterval(() => api("POST", "/api/heartbeat", { client: navigator.userAgent.slice(0, 190) }).catch(() => {}), 60000);
+}
+
+function renderClaim(cs) {
+  view.innerHTML = `<div class="card"><h1>Willkommen bei deinem eigenen Live Moderator 🎉</h1>
+    <p>Dein Server läuft. Jetzt machen wir ihn zu <b>deinem</b> Moderator. Das passiert nur ein einziges Mal.</p>
+    ${cs.ai_available ? "" : `<div class="note warn">Hinweis: Es ist noch kein KI-Schlüssel hinterlegt. Der Moderator arbeitet dann nur mit Regeln. Den Schlüssel kannst du später beim Hosting-Anbieter unter „Environment“ als ANTHROPIC_API_KEY eintragen.</div>`}
+    <label for="cn">Wie heißt du? (Vorname oder Künstlername)</label>
+    <input type="text" id="cn" maxlength="80" autocomplete="nickname">
+    ${cs.needs_key ? `<label for="ck">Admin-Schlüssel</label><input type="text" id="ck" autocomplete="off" spellcheck="false">
+      <p class="muted">Aus Sicherheitsgründen ist die freie Ersteinrichtung abgelaufen. Den Schlüssel findest du in deinem Render-Konto → dein Dienst → „Environment“ → ADMIN_TOKEN.</p>` : ""}
+    <div class="actions"><button class="primary" id="cgo">Moderator übernehmen</button></div></div>`;
+  $("#cgo").onclick = async () => {
+    const name = $("#cn").value.trim(); if (!name) return toast("Bitte Namen eingeben");
+    try {
+      const r = await fetch("/api/claim", { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, admin_key: cs.needs_key ? $("#ck").value : "" }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || "Fehler");
+      try { localStorage.setItem("fmm_token", d.token); } catch (e) {}
+      location.replace("/app#t=" + d.token); location.reload();
+    } catch (e) { toast(e.message, 5000); }
+  };
 }
 
 function renderNoToken(msg) {
@@ -104,6 +133,7 @@ function renderWizard() {
       <label for="u">Dein TikTok-Benutzername</label>
       <input type="text" id="u" placeholder="@deinname" autocapitalize="none" autocomplete="off" spellcheck="false" value="${esc(s.tiktok_user ? "@" + s.tiktok_user : "")}">
       <div class="note info">🔒 Wir fragen <b>nie</b> nach deinem TikTok-Passwort. Gib es niemandem weiter - auch nicht der Agentur.</div>
+      <div class="note warn">⭐ <b>Wichtig:</b> Die Adresse oben im Browser ist jetzt dein persönlicher Zugang. Lege sie gleich als Lesezeichen an oder tippe auf Teilen → „Zum Home-Bildschirm“.</div>
       ${nav("Weiter", false)}</div>`;
     bindNav(async () => {
       const r = await api("PUT", "/api/profile", { tiktok_user: $("#u").value });

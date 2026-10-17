@@ -62,6 +62,10 @@ CREATE TABLE IF NOT EXISTS usage (
     cost_usd REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS ix_usage_streamer ON usage(streamer_id, ts);
+CREATE TABLE IF NOT EXISTS meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS errors (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     streamer_id INTEGER,
@@ -180,6 +184,18 @@ class Database:
         row.pop("token_hash", None)
         row["has_mod_link"] = bool(row.pop("mod_token_hash", None))
         return row
+
+    # -- Meta --------------------------------------------------------------
+    def meta_get(self, key: str) -> str | None:
+        row = self._one("SELECT value FROM meta WHERE key=?", (key,))
+        return row["value"] if row else None
+
+    def meta_setdefault(self, key: str, value: str) -> str:
+        self._exec("INSERT OR IGNORE INTO meta(key, value) VALUES (?,?)", (key, value))
+        return self.meta_get(key) or value
+
+    def count_streamers(self) -> int:
+        return int(self._one("SELECT COUNT(*) AS n FROM streamers")["n"])
 
     # -- Live-Sessions -----------------------------------------------------
     def start_session(self, streamer_id: int, room_id: str | None) -> int:

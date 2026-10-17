@@ -1,5 +1,7 @@
 # Architektur & Grundsatzentscheidungen
 
+> **Ab v1.1: Self-Hosting.** Jeder Streamer stellt über den Render-Button seinen eigenen Server bereit (`render.yaml`, `SELF_HOSTED=true`). Er übernimmt ihn beim ersten Aufruf und zahlt Server und KI selbst. Es gibt keine zentrale Infrastruktur. Der unten beschriebene mandantenfähige Agenturmodus (`/admin`, mehrere Streamer auf einem Server) bleibt im Code erhalten und ist abschaltbar.
+
 Stand: 17.10.2026 · Version 1.0.0
 
 ## 1. Entscheidung: Cloud-Webanwendung statt Windows-Installer
@@ -21,7 +23,7 @@ Deshalb gibt es **keinen Windows-Installer und keine GitHub-Release-Datei**. Das
  Streamer (iPhone, TikTok-App)  ──LIVE──▶  TikTok
                                               │  öffentlicher LIVE-Chat (nur lesen)
                                               ▼
- ┌──────────────────────── Cloud-Server (Fly.io, Frankfurt) ────────────────────────┐
+ ┌────────────────────────  Server (Render, Frankfurt) ────────────────────────────┐
  │  BotManager: je Streamer ein Wachdienst                                          │
  │    - prüft alle 60 s, ob der Streamer LIVE ist (direkt bei TikTok, kostenlos)    │
  │    - verbindet sich mit dem Chat (TikTokLive; Signatur über Euler Stream, frei)  │

@@ -39,6 +39,12 @@ with sync_playwright() as p:
 
     page.goto(link)
     page.wait_for_selector("h1")
+    if "eigenen Live Moderator" in page.inner_text("h1"):  # Ersteinrichtung eines eigenen Servers
+        shot("00_uebernehmen")
+        page.fill("#cn", "Test-Streamer")
+        page.tap("#cgo")
+        page.wait_for_selector("text=Schritt 1 von", timeout=15000)
+        check("#t=" in page.url, "Ersteinrichtung: persönlicher Zugang in der Adresse gespeichert")
     shot("01_willkommen")
     check("Hallo" in page.inner_text("h1"), "Schritt 1: Begrüßung sichtbar")
     no_hscroll("Schritt 1")
@@ -98,7 +104,7 @@ with sync_playwright() as p:
     no_hscroll("Live-Ansicht")
     page.tap("[data-tab=berichte]")
     page.wait_for_timeout(1500)
-    check("Deine LIVEs" in page.content(), "Tab Berichte lädt")
+    check("Deine LIVEs" in page.content() or "Noch keine LIVEs" in page.content(), "Tab Berichte lädt")
     shot("09_berichte")
     page.tap("[data-tab=einstellungen]")
     page.wait_for_selector("text=Moderator-Link")

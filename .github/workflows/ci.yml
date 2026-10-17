@@ -1,0 +1,49 @@
+name: Prüfung
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      live_users:
+        description: "Kommagetrennte, gerade laufende TikTok-LIVEs für den Cloud-Verbindungstest (optional)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pytest httpx
+      - run: python -m pytest -q
+
+  container:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - name: Container bauen (wie bei Render)
+        run: docker build -t fmm-live-moderator .
+      - name: Container starten (eigener Server, leeres Volume)
+        run: |
+          echo "ADMIN=$(python3 -c 'import secrets;print(secrets.token_urlsafe(32))')" >> "$GITHUB_ENV"
+          docker volume create moddata
+      - run: |
+          docker run -d --name mod -p 8080:8080 -e SELF_HOSTED=true -e ADMIN_TOKEN="$ADMIN" \
+            -e PUBLIC_URL=http://localhost:8080 -v moddata:/data fmm-live-moderator
+          python3 scripts/container_smoke.py http://localhost:8080 "$ADMIN" claim "${{ github.event.inputs.live_users }}"
+      - name: Neustart - Daten müssen erhalten bleiben
+        run: |
+          docker restart mod
+          python3 scripts/container_smoke.py http://localhost:8080 "$ADMIN" restart
+      - name: Server-Log bei Fehler
+        if: failure()
+        run: docker logs mod | tail -100

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FMM Live Moderator einrichten</title>
+<meta name="description" content="Dein eigener KI-Moderator für TikTok LIVE - in 15 Minuten eingerichtet, läuft in deiner eigenen Cloud.">
+<meta property="og:title" content="FMM Live Moderator einrichten">
+<meta property="og:description" content="Dein eigener KI-Moderator für TikTok LIVE. Ohne Installation, auch nur mit dem iPhone.">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --text:#16181d; --muted:#5d6470; --line:#e3e5ea; --accent:#fe2c55; --ok:#e7f6ee; --warn:#fff4dc; --info:#e8effd; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f1115; --card:#181b21; --text:#eef0f3; --muted:#9aa1ad; --line:#2a2e36; --ok:#12301f; --warn:#3a2c0b; --info:#152446; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-text-size-adjust:100%; }
+  .wrap { max-width:680px; margin:0 auto; padding:16px 16px calc(env(safe-area-inset-bottom) + 24px); }
+  .brand { display:flex; align-items:center; gap:10px; margin:8px 0 14px; }
+  .logo { width:38px; height:38px; border-radius:11px; background:var(--accent); display:grid; place-items:center; color:#fff; font-weight:800; }
+  h1 { font-size:1.6rem; line-height:1.25; margin:0 0 8px; }
+  h2 { font-size:1.15rem; margin:0 0 8px; display:flex; gap:10px; align-items:center; }
+  .num { flex:none; width:30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; display:grid; place-items:center; font-size:.95rem; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin:0 0 12px; }
+  .note { border-radius:12px; padding:12px; margin:10px 0; font-size:.95rem; }
+  .ok { background:var(--ok); } .warn { background:var(--warn); } .info { background:var(--info); }
+  ol { padding-left:20px; margin:6px 0; } li { margin:5px 0; }
+  .btn { display:block; text-align:center; background:var(--accent); color:#fff; text-decoration:none; font-weight:800; padding:15px; border-radius:12px; margin:12px 0 4px; font-size:1.05rem; }
+  .btn.alt { background:var(--text); color:var(--bg); }
+  table { width:100%; border-collapse:collapse; font-size:.92rem; } td, th { text-align:left; padding:7px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
+  small, .muted { color:var(--muted); }
+  code { background:var(--bg); padding:1px 5px; border-radius:5px; font-size:.9em; }
+  details { margin:8px 0; } summary { font-weight:700; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><div class="logo">M</div><div><b>FMM Live Moderator</b><br><small>KI-Chatmoderation für TikTok LIVE</small></div></div>
+
+  <div class="card">
+    <h1>Dein eigener KI-Moderator für TikTok LIVE</h1>
+    <p>Er liest deinen LIVE-Chat mit, erkennt Beleidigungen, Hass, Belästigung, Spam und wichtige Fragen, und sagt dir oder deinem Moderator sofort, was zu tun ist.</p>
+    <div class="note ok">✅ Läuft in <b>deiner eigenen Cloud</b>, auch wenn du nur mit dem iPhone streamst und dein PC aus ist.<br>✅ Keine Installation, kein Programmieren.<br>✅ Kein TikTok-Passwort nötig, niemals.</div>
+    <p class="muted">Dauer: ca. 15 Minuten, einmalig. Am besten direkt hier auf dem iPhone in Safari.</p>
+  </div>
+
+  <div class="card">
+    <h2>💶 Was kostet das?</h2>
+    <table>
+      <tr><th>Dienst</th><th>Wofür</th><th>Kosten</th></tr>
+      <tr><td>Render</td><td>dein Server, rund um die Uhr</td><td>ca. 7 USD/Monat + 0,25 USD Speicher</td></tr>
+      <tr><td>Anthropic</td><td>die KI</td><td>Guthaben ab 5 USD, Verbrauch meist 1–3 USD/Monat</td></tr>
+    </table>
+    <p class="muted">Du bezahlst direkt beim Anbieter und kannst jederzeit kündigen. Die Agentur sieht weder deine Zahlungsdaten noch deine Passwörter.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">1</span> KI-Schlüssel holen</h2>
+    <ol>
+      <li>Auf <b>„Anthropic öffnen“</b> tippen und registrieren.</li>
+      <li><b>Billing</b> → Guthaben kaufen (5 USD reichen für Monate). Tipp: unter <b>Limits</b> ein Monatslimit setzen, z. B. 10 USD.</li>
+      <li><b>API Keys</b> → <b>Create Key</b> → Name „Live Moderator“ → <b>kopieren</b>. Der Schlüssel beginnt mit <code>sk-ant-</code> und wird nur einmal angezeigt.</li>
+    </ol>
+    <a class="btn alt" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">Anthropic öffnen</a>
+    <p class="muted">Behandle den Schlüssel wie ein Passwort und schick ihn niemandem.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">2</span> Eigenen Server starten</h2>
+    <ol>
+      <li>Auf <b>„Server bei Render starten“</b> tippen, registrieren (E-Mail, Google oder GitHub) und eine Zahlungsmethode hinterlegen.</li>
+      <li>Bei <b>ANTHROPIC_API_KEY</b> deinen Schlüssel aus Schritt 1 einfügen.</li>
+      <li><b>Deploy Blueprint</b> bzw. <b>Apply</b> antippen und 3–8 Minuten warten, bis der Status <b>Live</b> zeigt.</li>
+      <li>Auf deine Adresse tippen (sieht aus wie <code>https://fmm-live-moderator-xxxx.onrender.com</code>).</li>
+    </ol>
+    <a class="btn" href="https://render.com/deploy?repo=https://github.com/__OWNER__/fmm-live-moderator" target="_blank" rel="noopener">Server bei Render starten</a>
+    <p class="muted">Alle Sicherheitsschlüssel werden für deinen Server automatisch neu und zufällig erzeugt.</p>
+  </div>
+
+  <div class="card">
+    <h2><span class="num">3</span> Moderator übernehmen &amp; einrichten</h2>
+    <ol>
+      <li>Deine Adresse zeigt „Willkommen bei deinem eigenen Live Moderator“. Namen eingeben → <b>Moderator übernehmen</b>. Das geht nur einmal, in den ersten 6 Stunden.</li>
+      <li><b>Sofort sichern:</b> Safari → Teilen → <b>„Zum Home-Bildschirm“</b>. Das ist ab jetzt dein persönlicher Zugang.</li>
+      <li>Dem Assistenten folgen: TikTok-Name → Regeln → KI → Verbindung testen → <b>Bot aktivieren</b>.</li>
+      <li>Die angezeigte Wortliste in den TikTok-Schlüsselwortfilter kopieren.</li>
+    </ol>
+    <div class="note ok">🎉 Fertig! Ab jetzt startet der Moderator bei jedem LIVE automatisch.</div>
+  </div>
+
+  <div class="card">
+    <h2>❓ Häufige Fragen</h2>
+    <details><summary>Schaltet der Bot Störer selbst stumm?</summary><p>Nein. TikTok bietet dafür keine offizielle Schnittstelle. Der Bot empfiehlt, und du oder dein TikTok-Moderator führt es mit zwei Fingertipps aus. Wörter aus deiner Wortliste blendet TikTok automatisch aus.</p></details>
+    <details><summary>Ich streame nur mit dem iPhone. Wie sehe ich die Hinweise?</summary><p>Trag eine Vertrauensperson in TikTok als LIVE-Moderator ein und schick ihr den Moderator-Link aus deiner App (Einstellungen). Sie sieht alles live. Oder nutz ein zweites Gerät. Nach jedem LIVE gibt es einen Bericht.</p></details>
+    <details><summary>Zugang verloren?</summary><p>Render → dein Dienst → Environment → Wert von <code>ADMIN_TOKEN</code> kopieren → <code>deine-adresse.onrender.com/admin</code> öffnen → Schlüssel eingeben → „Neuer Link“.</p></details>
+    <details><summary>Wie kündige ich?</summary><p>Render → dein Dienst → Settings → Delete Service. Damit enden alle Kosten und die Daten werden gelöscht. Bei Anthropic den Schlüssel löschen.</p></details>
+    <details><summary>Was passiert mit den Chat-Daten?</summary><p>Sie liegen nur auf deinem eigenen Server und werden nach 30 Tagen automatisch gelöscht. Zur Prüfung gehen nur Kommentartext und Anzeigename an die KI von Anthropic.</p></details>
+  </div>
+  <p class="muted">Fragen? Melde dich bei deiner Agentur. · <a href="https://github.com/__OWNER__/fmm-live-moderator/blob/main/ANLEITUNG.md">Anleitung als Text</a></p>
+</div>
+</body>
+</html>

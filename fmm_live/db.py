@@ -209,6 +209,9 @@ class Database:
         self._exec("UPDATE live_sessions SET ended_at=? WHERE id=? AND ended_at IS NULL",
                    (time.time(), session_id))
 
+    def reopen_session(self, session_id: int) -> None:
+        self._exec("UPDATE live_sessions SET ended_at=NULL WHERE id=?", (session_id,))
+
     def close_open_sessions(self) -> None:
         self._exec("UPDATE live_sessions SET ended_at=? WHERE ended_at IS NULL", (time.time(),))
 

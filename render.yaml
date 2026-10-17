@@ -3,7 +3,9 @@
 services:
   - type: web
     name: fmm-live-moderator
-    runtime: docker
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m fmm_live.web
     plan: 0.5c-512mb          # kleinster Dauerbetrieb-Tarif (schlaeft nicht ein)
     region: frankfurt
     healthCheckPath: /healthz
@@ -17,6 +19,8 @@ services:
         sync: false
       - key: ADMIN_TOKEN        # wird automatisch zufaellig erzeugt, nur im eigenen Render-Konto sichtbar
         generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.12.10"
       - key: SELF_HOSTED
         value: "true"
       - key: DATA_DIR

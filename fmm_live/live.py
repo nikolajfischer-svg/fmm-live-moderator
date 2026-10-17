@@ -47,6 +47,7 @@ class TikTokSource:
         self._client_cls = TikTokLiveClient
         self._proxy = proxy
         self.client = None
+        self._seen: dict = {}  # bleibt ueber Wiederverbindungen erhalten
 
     def _new_client(self):
         kwargs = {}
@@ -75,7 +76,7 @@ class TikTokSource:
         client = self._new_client()
         self.client = client
         ended = asyncio.Event()
-        seen: dict = {}  # TikTok liefert Chatnachrichten teils mehrfach aus -> per Nachrichten-ID entdoppeln
+        seen = self._seen  # TikTok liefert Chatnachrichten teils mehrfach aus -> per Nachrichten-ID entdoppeln
 
         async def _comment(event: CommentEvent) -> None:
             user = getattr(event, "user", None)
@@ -84,11 +85,11 @@ class TikTokSource:
             msg_id = getattr(common, "msg_id", 0) if common else 0
             key = msg_id or (getattr(user, "id", ""), text)
             now = time.time()
-            if key in seen and now - seen[key] < 120:
+            if key in seen and now - seen[key] < 600:
                 return
             seen[key] = now
             if len(seen) > 5000:
-                for k in [k for k, t in seen.items() if now - t > 120]:
+                for k in [k for k, t in seen.items() if now - t > 600]:
                     seen.pop(k, None)
             await on_comment({
                 "text": text,
@@ -114,8 +115,11 @@ class TikTokSource:
         client.add_listener(RoomUserSeqEvent, _viewers)
         client.add_listener(LiveEndEvent, _end)
         task = await client.start(fetch_live_check=True)
-        done, _ = await asyncio.wait({task, asyncio.create_task(ended.wait())},
-                                     return_when=asyncio.FIRST_COMPLETED)
+        end_wait = asyncio.create_task(ended.wait())
+        try:
+            done, _ = await asyncio.wait({task, end_wait}, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            end_wait.cancel()
         await self.close()
         if task in done and task.exception():
             raise task.exception()  # type: ignore[misc]
@@ -268,8 +272,14 @@ class BotManager:
 
                 bot.status.state, bot.status.message = "verbinde", "LIVE erkannt - verbinde mit dem Chat"
                 self._publish_status(bot)
-                session_id = self.db.start_session(bot.streamer_id, None)
-                bot.pipeline.new_session(session_id)
+                prev_id, prev_end = getattr(bot, "last_session", (None, 0.0))
+                if prev_id and time.time() - prev_end < 300:
+                    session_id = prev_id
+                    self.db.reopen_session(session_id)
+                    bot.pipeline.session_id = session_id
+                else:
+                    session_id = self.db.start_session(bot.streamer_id, None)
+                    bot.pipeline.new_session(session_id)
 
                 def _connected(room_id: str) -> None:
                     bot.status.state, bot.status.message = "live", "Moderation läuft"
@@ -290,6 +300,7 @@ class BotManager:
                     await self._on_error(bot, "Chat-Verbindung", exc, sleep=False)
                 finally:
                     self.db.end_session(session_id)
+                    bot.last_session = (session_id, time.time())
                     self.hub.publish(bot.streamer_id, {"type": "session_end", "session_id": session_id})
                 await asyncio.sleep(10)
             except asyncio.CancelledError:

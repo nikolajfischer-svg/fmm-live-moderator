@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Awaitable, Callable, Protocol
@@ -242,54 +243,59 @@ class BotManager:
         source = self.source_factory(bot.tiktok_user)
         poll = max(15, self.settings.live_poll_seconds)
         while True:
-            bot.status.last_check = time.time()
             try:
-                live = await source.is_live()
-            except UserNotFound:
-                bot.status.state, bot.status.message = "fehler", f"TikTok-Konto @{bot.tiktok_user} nicht gefunden"
-                self.db.add_error(bot.streamer_id, "tiktok", bot.status.message)
+                bot.status.last_check = time.time()
+                try:
+                    live = await source.is_live()
+                except UserNotFound:
+                    bot.status.state, bot.status.message = "fehler", f"TikTok-Konto @{bot.tiktok_user} nicht gefunden"
+                    self.db.add_error(bot.streamer_id, "tiktok", bot.status.message)
+                    self._publish_status(bot)
+                    await asyncio.sleep(300)
+                    continue
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    await self._on_error(bot, "Live-Status-Abfrage", exc)
+                    continue
+
+                if not live:
+                    bot.status.state, bot.status.message = "wartet", "Bot aktiv - wartet auf dein LIVE"
+                    bot.status.errors_in_row = 0
+                    self._publish_status(bot)
+                    await asyncio.sleep(poll)
+                    continue
+
+                bot.status.state, bot.status.message = "verbinde", "LIVE erkannt - verbinde mit dem Chat"
                 self._publish_status(bot)
-                await asyncio.sleep(300)
-                continue
+                session_id = self.db.start_session(bot.streamer_id, None)
+                bot.pipeline.new_session(session_id)
+
+                def _connected(room_id: str) -> None:
+                    bot.status.state, bot.status.message = "live", "Moderation läuft"
+                    bot.status.live_since, bot.status.room_id = time.time(), room_id
+                    bot.status.errors_in_row = 0
+                    self._publish_status(bot)
+
+                def _viewers(n: int) -> None:
+                    bot.status.viewers = n
+
+                try:
+                    await source.run(bot.pipeline.submit, _connected, _viewers)
+                    bot.status.state, bot.status.message = "wartet", "LIVE beendet - Bericht verfügbar"
+                    self._publish_status(bot)
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    await self._on_error(bot, "Chat-Verbindung", exc, sleep=False)
+                finally:
+                    self.db.end_session(session_id)
+                    self.hub.publish(bot.streamer_id, {"type": "session_end", "session_id": session_id})
+                await asyncio.sleep(10)
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:
-                await self._on_error(bot, "Live-Status-Abfrage", exc)
-                continue
-
-            if not live:
-                bot.status.state, bot.status.message = "wartet", "Bot aktiv - wartet auf dein LIVE"
-                bot.status.errors_in_row = 0
-                self._publish_status(bot)
-                await asyncio.sleep(poll)
-                continue
-
-            bot.status.state, bot.status.message = "verbinde", "LIVE erkannt - verbinde mit dem Chat"
-            self._publish_status(bot)
-            session_id = self.db.start_session(bot.streamer_id, None)
-            bot.pipeline.new_session(session_id)
-
-            def _connected(room_id: str) -> None:
-                bot.status.state, bot.status.message = "live", "Moderation läuft"
-                bot.status.live_since, bot.status.room_id = time.time(), room_id
-                bot.status.errors_in_row = 0
-                self._publish_status(bot)
-
-            def _viewers(n: int) -> None:
-                bot.status.viewers = n
-
-            try:
-                await source.run(bot.pipeline.submit, _connected, _viewers)
-                bot.status.state, bot.status.message = "wartet", "LIVE beendet - Bericht verfügbar"
-                self._publish_status(bot)
-            except asyncio.CancelledError:
-                raise
-            except Exception as exc:
-                await self._on_error(bot, "Chat-Verbindung", exc, sleep=False)
-            finally:
-                self.db.end_session(session_id)
-                self.hub.publish(bot.streamer_id, {"type": "session_end", "session_id": session_id})
-            await asyncio.sleep(10)
+            except Exception as exc:  # unerwarteter Fehler: protokollieren, warten, weitermachen
+                await self._on_error(bot, "Wachdienst", exc)
 
     async def _on_error(self, bot: Bot, where: str, exc: Exception, sleep: bool = True) -> None:
         bot.status.errors_in_row += 1
@@ -302,7 +308,7 @@ class BotManager:
         else:
             hint = "Verbindungsproblem - neuer Versuch folgt"
         bot.status.state, bot.status.message = "fehler", hint
-        self.db.add_error(bot.streamer_id, "tiktok", f"{where}: {name}: {text}")
+        self.db.add_error(bot.streamer_id, "tiktok", re.sub(r"//[^@/\s]+@", "//***@", f"{where}: {name}: {text}"))
         self._publish_status(bot)
         delay = min(300, 15 * (2 ** min(bot.status.errors_in_row - 1, 4)))
         await asyncio.sleep(delay if sleep else min(delay, 60))

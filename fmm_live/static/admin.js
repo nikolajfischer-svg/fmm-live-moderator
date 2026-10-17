@@ -3,6 +3,11 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 let TOKEN = "";
 try { TOKEN = sessionStorage.getItem("fmm_admin") || ""; } catch (e) {}
+{
+  // Admin-Link: /admin#k=<ADMIN_TOKEN> - der #-Teil wird nie an den Server gesendet
+  const k = new URLSearchParams(location.hash.slice(1)).get("k");
+  if (k) { TOKEN = k; try { sessionStorage.setItem("fmm_admin", k); } catch (e) {} history.replaceState(null, "", "/admin"); }
+}
 const STATE = { inaktiv: "Aus", wartet: "Bereit (wartet auf LIVE)", verbinde: "Verbinde", live: "LIVE", fehler: "Fehler" };
 
 function toast(m, ms = 3000) { const t = $("#toast"); t.textContent = m; t.classList.remove("hidden"); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.add("hidden"), ms); }

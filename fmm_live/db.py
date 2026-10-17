@@ -90,6 +90,7 @@ class Database:
             if self.path != ":memory:":
                 self._conn.execute("PRAGMA journal_mode=WAL")
             self._conn.execute("PRAGMA foreign_keys=ON")
+            self._conn.execute("PRAGMA secure_delete=ON")  # geloeschte Chat-Daten werden ueberschrieben
             self._conn.executescript(SCHEMA)
 
     # -- Basis -------------------------------------------------------------
@@ -237,6 +238,9 @@ class Database:
         cutoff = time.time() - retention_days * 86400
         n = self._exec("DELETE FROM events WHERE ts<?", (cutoff,)).rowcount
         self._exec("DELETE FROM errors WHERE ts<?", (cutoff,))
+        if n:
+            with self._lock:
+                self._conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
         return n
 
     # -- Kosten ------------------------------------------------------------

@@ -220,6 +220,18 @@ class RuleEngine:
         return decision, state.strikes
 
 
+INJECTION_RE = re.compile(
+    r"(ignorier|vergiss|missacht|überschreib|ueberschreib|ignore|disregard|forget).{0,40}"
+    r"(regel|anweisung|instruktion|prompt|vorgabe|rule|instruction|system)"
+    r"|(markier|bewert|stuf|klassifizier|mark|label|rate).{0,40}(alle|alles|jeden|all|every).{0,30}(ok|okay|harmlos|safe|dringend)"
+    r"|\b(system ?prompt|you are now|du bist jetzt|als ki|as an ai|json|\{\s*\")",
+    re.IGNORECASE)
+
+
+def looks_like_injection(text: str) -> bool:
+    return bool(text) and bool(INJECTION_RE.search(text))
+
+
 def simple_question(text: str) -> bool:
     t = text.strip().lower()
     return t.endswith("?") or bool(re.match(r"^(wie|was|wann|wo|warum|wieso|weshalb|welche[rsnm]?|kannst|bist|hast|machst|wirst)\b", t))

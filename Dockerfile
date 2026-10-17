@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY fmm_live ./fmm_live
 
 RUN useradd --create-home appuser && mkdir -p /data && chown appuser /data
-USER appuser
+# Startet als root nur, um das (root-eigene) Fly-Volume dem App-Nutzer zu geben, und laeuft dann ohne Root-Rechte.
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request,os;urllib.request.urlopen('http://127.0.0.1:'+os.environ.get('PORT','8080')+'/healthz',timeout=4)"
-CMD ["python", "-m", "fmm_live.web"]
+CMD ["sh", "-c", "chown -R appuser:appuser /data && exec setpriv --reuid=appuser --regid=appuser --init-groups python -m fmm_live.web"]

@@ -209,3 +209,68 @@ def test_settings_survive_restart(tmp_path, fake_classifier):
         me = client.get("/api/me", headers=auth(t)).json()
         assert me["streamer"]["setup_done"] and me["streamer"]["bot_active"]
         assert wait_for(lambda: client.get("/api/me", headers=auth(t)).json()["status"]["state"] == "wartet")
+
+
+def test_security_headers_and_privacy_page(tmp_path, fake_classifier):
+    app = create_app(make_settings(tmp_path, operator_email="info@example.de", operator_address="Musterweg 1"),
+                     source_factory=lambda u: FakeSource(u, []), classifier=fake_classifier)
+    with TestClient(app) as client:
+        r = client.get("/app")
+        assert "script-src 'self'" in r.headers["content-security-policy"]
+        assert r.headers["x-frame-options"] == "DENY"
+        page = client.get("/datenschutz").text
+        assert "Musterweg 1, info@example.de" in page and "{{" not in page
+
+
+def test_admin_diagnose(setup):
+    client, *_ = setup
+    assert client.post("/api/admin/diagnose", json={"tiktok_user": "irgendwer"}).status_code == 401
+    r = client.post("/api/admin/diagnose", json={"tiktok_user": "@irgendwer", "seconds": 5}, headers=H_ADMIN).json()
+    assert r["live"] is True and r["connected_after_s"] is not None and r["comments"] == len(COMMENTS)
+    assert r["error"] is None
+
+
+def test_watchdog_restarts_crashed_bot(tmp_path, fake_classifier):
+    class Crash(BaseException):
+        pass
+
+    class CrashSource(FakeSource):
+        async def is_live(self):
+            raise Crash("unerwarteter Absturz")  # nicht abgefangen -> Wachdienst endet
+
+    app = create_app(make_settings(tmp_path), source_factory=lambda u: CrashSource(u, []), classifier=fake_classifier)
+    with TestClient(app) as client:
+        t = new_streamer(client)
+        client.put("/api/profile", json={"tiktok_user": "lena"}, headers=auth(t))
+        client.post("/api/setup-complete", headers=auth(t))
+        bot = app.state.manager.bots[1]
+        wait_for(lambda: bot.task is not None and bot.task.done())
+        app.state.manager.source_factory = lambda u: FakeSource(u, [], live=False)
+        client.post("/api/bot", json={"active": True}, headers=auth(t))  # sync() wie der Wachhund
+        assert wait_for(lambda: client.get("/api/me", headers=auth(t)).json()["status"]["state"] == "wartet")
+
+
+def test_injection_is_isolated_and_rate_limits(setup):
+    client, _sources, classifier = setup
+    t = new_streamer(client)
+    pipe_calls = classifier.calls
+    for i in range(10):
+        assert client.post("/api/test-message", json={"text": f"hallo {i}"}, headers=auth(t)).status_code == 200
+    assert client.post("/api/test-message", json={"text": "zu viel"}, headers=auth(t)).status_code == 429
+    assert classifier.calls > pipe_calls
+    assert client.post("/api/settings", content=b"x" * 70000, headers={**auth(t), "Content-Type": "application/json"}).status_code == 413
+    assert client.get("/api/events?limit=-1", headers=auth(t)).status_code == 422
+
+
+def test_admin_only_via_header(setup):
+    client, *_ = setup
+    assert client.get(f"/api/admin/overview?t={ADMIN}").status_code == 401
+    assert client.get("/api/admin/overview", headers=H_ADMIN).status_code == 200
+
+
+def test_mod_does_not_get_keywords_or_touch_last_seen(setup):
+    client, *_ = setup
+    t = new_streamer(client)
+    tm = client.post("/api/mod-link", headers=auth(t)).json()["link"].split("#m=")[1]
+    me = client.get("/api/me", headers=auth(tm)).json()
+    assert me["keyword_filter"] == []

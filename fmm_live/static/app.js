@@ -60,7 +60,8 @@ async function boot() {
     ME = await api("GET", "/api/me");
   } catch (e) {
     if (e.status === 401) { try { localStorage.removeItem("fmm_token"); } catch (x) {} return renderNoToken(e.message); }
-    view.innerHTML = `<div class="card"><h2>Server nicht erreichbar</h2><p>${esc(e.message)}</p><button class="primary" onclick="location.reload()">Erneut versuchen</button></div>`;
+    view.innerHTML = `<div class="card"><h2>Server nicht erreichbar</h2><p>${esc(e.message)}</p><button class="primary" id="retry">Erneut versuchen</button></div>`;
+    $("#retry").onclick = () => location.reload();
     return;
   }
   $("#ver").textContent = "v" + ME.version;
@@ -249,7 +250,7 @@ function eventHtml(e, isTest = false) {
   const d = e.decision;
   const cat = e.category && ME.categories[e.category] ? ME.categories[e.category] : "";
   const todo = TODO[d] ? `<div class="todo">👉 ${esc(TODO[d])}</div>` : "";
-  const sugg = e.suggestion ? `<div class="sugg">💬 Antwortidee: ${esc(e.suggestion)}</div>` : "";
+  const sugg = e.suggestion ? `<div class="sugg">💬 KI-Antwortidee (ungeprüft): ${esc(e.suggestion)}</div>` : "";
   const handle = e.viewer_handle ? ` <span>@${esc(e.viewer_handle)}</span>` : "";
   const btn = (!isTest && RANK[d] >= 2) ? `<div class="actions" style="margin-top:8px"><button class="small ghost" data-done="${e.id}">${e.handled ? "Erledigt ✓" : "Als erledigt markieren"}</button></div>` : "";
   return `<div class="ev d-${d} ${e.handled ? "handled" : ""}" id="ev${e.id || ""}">
@@ -260,7 +261,7 @@ function eventHtml(e, isTest = false) {
 
 function statusHtml(st) {
   const live = st.state === "live";
-  const extra = live ? ` · ${st.viewers || 0} Zuschauer · ${st.stats ? st.stats.comments : 0} Kommentare geprüft` : "";
+  const extra = live ? `${st.viewers ? ` · ${st.viewers} Zuschauer` : ""} · ${st.stats ? st.stats.comments : 0} Kommentare geprüft` : "";
   return `<div class="status"><span class="dot ${esc(st.state)}"></span><div style="flex:1"><b>${esc(STATE_TEXT[st.state] || st.state)}</b><br><small>${esc(st.message || "")}${extra}</small></div></div>`;
 }
 
@@ -335,11 +336,13 @@ function ensureStream() {
       ME.status = p.status; const c = $("#statusCard"); if (c) c.firstElementChild.outerHTML = statusHtml(p.status);
     } else if (p.type === "event") {
       addEvent(p.event);
+      if (p.stats && !p.event.is_test) { ME.status.stats = p.stats; const c = $("#statusCard"); if (c) c.firstElementChild.outerHTML = statusHtml(ME.status); }
       if (p.event.decision === "dringend" && !p.event.is_test) alarm();
       if (["wichtig", "fragen", "alle"].includes(TAB)) renderTab();
     } else if (p.type === "handled") {
       const ev = EVENTS.get(p.id); if (ev) { ev.handled = 1; renderTab(); }
     } else if (p.type === "session_end") { toast("LIVE beendet - Bericht unter „Berichte“", 5000); }
+    else if (p.type === "revoked") { ES.close(); ES = null; try { localStorage.removeItem("fmm_token"); } catch (e) {} renderNoToken("Dieser Zugangslink wurde von der Agentur deaktiviert. Bitte frage nach einem neuen Link."); }
   };
   ES.onopen = () => loadEvents().then(renderTab);
 }

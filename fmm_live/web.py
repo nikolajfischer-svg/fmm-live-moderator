@@ -3,16 +3,18 @@ from __future__ import annotations
 
 import asyncio
 import hmac
+import html
 import json
 import logging
 import time
-from collections import Counter
+import re
+from collections import Counter, defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -31,12 +33,12 @@ STATIC = Path(__file__).parent / "static"
 # --------------------------------------------------------------------------- Modelle
 class SettingsIn(BaseModel):
     preset: str = "standard"
-    categories: dict[str, bool] = Field(default_factory=dict)
+    categories: dict[str, bool] = Field(default_factory=dict, max_length=20)
     blocked_words: list[str] = Field(default_factory=list, max_length=300)
     use_base_list: bool = True
     allowed_users: list[str] = Field(default_factory=list, max_length=200)
     block_links: bool = True
-    ai: dict[str, Any] = Field(default_factory=dict)
+    ai: dict[str, Any] = Field(default_factory=dict, max_length=10)
 
 
 class ProfileIn(BaseModel):
@@ -56,8 +58,33 @@ class NewStreamerIn(BaseModel):
     preset: str = "standard"
 
 
+class DiagnoseIn(BaseModel):
+    tiktok_user: str = Field(min_length=2, max_length=60)
+    seconds: int = Field(default=20, ge=5, le=60)
+
+
 class HeartbeatIn(BaseModel):
     client: str = Field(default="", max_length=200)
+
+
+class RateLimiter:
+    """Einfacher Speicher-Limiter je Schluessel (ein Server-Prozess reicht fuer den Pilot)."""
+
+    def __init__(self) -> None:
+        self._hits: dict[str, deque] = defaultdict(deque)
+
+    def hit(self, key: str, n: int, per: float) -> None:
+        q, now = self._hits[key], time.time()
+        while q and now - q[0] > per:
+            q.popleft()
+        if len(q) >= n:
+            raise HTTPException(429, "Bitte einen Moment warten und dann erneut versuchen.")
+        q.append(now)
+
+
+def redact(text: str) -> str:
+    """Entfernt Zugangsdaten aus URLs in Fehlermeldungen (z. B. Proxy-Passwort)."""
+    return re.sub(r"//[^@/\s]+@", "//***@", text)
 
 
 def _clean_settings(data: SettingsIn) -> dict:
@@ -129,12 +156,22 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
                          daily_budget_usd=settings.daily_budget_usd)
 
     async def _housekeeping() -> None:
+        """Wachhund: startet beendete/abgestuerzte Wachdienste neu und loescht alte Chat-Daten."""
+        tick = 0
         while True:
+            await asyncio.sleep(60)
+            tick += 1
             try:
-                db.purge_old(settings.retention_days)
+                if start_bots:
+                    await manager.sync_all()
             except Exception as exc:
-                log.warning("Aufräumen fehlgeschlagen: %s", exc)
-            await asyncio.sleep(3600)
+                log.warning("Wachhund-Abgleich fehlgeschlagen: %s", exc)
+                db.add_error(None, "wachhund", f"{type(exc).__name__}: {exc}")
+            if tick % 60 == 1:
+                try:
+                    db.purge_old(settings.retention_days)
+                except Exception as exc:
+                    log.warning("Aufräumen fehlgeschlagen: %s", exc)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
@@ -150,6 +187,18 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
     app = FastAPI(title="FMM Live Moderator", version=VERSION, lifespan=lifespan,
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.db, app.state.manager, app.state.settings, app.state.hub = db, manager, settings, hub
+    limiter = RateLimiter()
+    sse_count: dict[int, int] = defaultdict(int)
+
+    @app.middleware("http")
+    async def body_limit(request: Request, call_next):
+        try:
+            size = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            size = 0
+        if size > 64_000:
+            return JSONResponse({"detail": "Anfrage zu groß"}, status_code=413)
+        return await call_next(request)
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -157,6 +206,12 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+            "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'")
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000"
         response.headers["Cache-Control"] = response.headers.get("Cache-Control", "no-store")
         return response
 
@@ -179,10 +234,11 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
         return row
 
     def admin(request: Request, authorization: str | None = Header(default=None)) -> None:
-        token = _token_from(request, authorization)
+        token = authorization[7:].strip() if authorization and authorization.lower().startswith("bearer ") else ""
         if not settings.admin_token or len(settings.admin_token) < 16:
             raise HTTPException(503, "ADMIN_TOKEN ist auf dem Server nicht (sicher) gesetzt.")
         if not hmac.compare_digest(token.encode(), settings.admin_token.encode()):
+            limiter.hit("admin-fail", 20, 300)  # mehr als 20 Fehlversuche in 5 Min. -> 429
             raise HTTPException(401, "Admin-Zugang verweigert")
 
     def invite_link(token: str) -> str:
@@ -210,7 +266,13 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
 
     @app.get("/datenschutz", include_in_schema=False)
     async def privacy_page():
-        return FileResponse(STATIC / "datenschutz.html", headers={"Cache-Control": "no-cache"})
+        page = (STATIC / "datenschutz.html").read_text(encoding="utf-8")
+        contact = ", ".join(x for x in (settings.operator_address, settings.operator_email) if x)
+        page = (page.replace("{{OPERATOR_NAME}}", html.escape(settings.operator_name))
+                    .replace("{{OPERATOR_CONTACT}}", html.escape(contact or "Kontakt über die betreuende Agentur"))
+                    .replace("{{OPERATOR_EMAIL}}", html.escape(settings.operator_email or "die betreuende Agentur"))
+                    .replace("{{HOSTING_INFO}}", html.escape(settings.hosting_info or "Cloud-Hosting in der EU (Frankfurt)")))
+        return HTMLResponse(page, headers={"Cache-Control": "no-cache"})
 
     app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
@@ -222,7 +284,8 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
     @app.get("/api/me")
     async def me(ctx: tuple[dict, str] = Depends(auth)):
         row, role = ctx
-        db.update_streamer(row["id"], last_seen_at=time.time())
+        if role == "streamer":
+            db.update_streamer(row["id"], last_seen_at=time.time())
         s = merged_settings(row["settings"])
         return {
             "role": role,
@@ -236,7 +299,7 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
             "categories": CATEGORIES,
             "decisions": DECISIONS,
             "ai_available": isinstance(manager.classifier, ClaudeClassifier),
-            "keyword_filter": keyword_filter_export(s),
+            "keyword_filter": keyword_filter_export(s) if role == "streamer" else [],
         }
 
     @app.put("/api/settings")
@@ -255,6 +318,7 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
 
     @app.post("/api/test-connection")
     async def test_connection(row: dict = Depends(streamer_only)):
+        limiter.hit(f"tc-{row['id']}", 4, 60)
         user = db.get_streamer(row["id"])["tiktok_user"]
         if not user:
             raise HTTPException(400, "Bitte zuerst den TikTok-Benutzernamen speichern.")
@@ -268,7 +332,7 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
             return {"ok": False, "found": False, "live": False,
                     "message": f"Das Konto @{user} wurde bei TikTok nicht gefunden. Bitte Schreibweise prüfen."}
         except Exception as exc:
-            db.add_error(row["id"], "verbindungstest", f"{type(exc).__name__}: {exc}")
+            db.add_error(row["id"], "verbindungstest", redact(f"{type(exc).__name__}: {exc}"))
             return {"ok": False, "found": None, "live": None,
                     "message": "TikTok hat nicht rechtzeitig geantwortet. Bitte in einer Minute erneut testen."}
         msg = (f"Verbindung klappt: @{user} ist gerade LIVE." if live
@@ -277,6 +341,8 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
 
     @app.post("/api/test-message")
     async def test_message(data: TestMessageIn, row: dict = Depends(streamer_only)):
+        limiter.hit(f"tm-{row['id']}", 10, 60)
+        limiter.hit(f"tm-day-{row['id']}", 200, 86400)
         bot = manager.bot(row["id"])
         future = asyncio.get_running_loop().create_future()
         await bot.pipeline.submit({"text": data.text, "viewer_name": "Testnachricht", "viewer_handle": "",
@@ -303,7 +369,7 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
         return {"ok": True, "status": manager.status(row["id"])}
 
     @app.get("/api/events")
-    async def get_events(after: int = 0, flagged: bool = False, limit: int = Query(200, le=500),
+    async def get_events(after: int = Query(0, ge=0), flagged: bool = False, limit: int = Query(200, ge=1, le=500),
                          ctx: tuple[dict, str] = Depends(auth)):
         row, _ = ctx
         return {"events": db.events(row["id"], after_id=after, only_flagged=flagged, limit=limit)}
@@ -332,22 +398,37 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
 
     @app.post("/api/heartbeat")
     async def heartbeat(data: HeartbeatIn, ctx: tuple[dict, str] = Depends(auth)):
-        row, _ = ctx
-        db.update_streamer(row["id"], last_seen_at=time.time(), client_info=data.client)
+        row, role = ctx
+        if role == "streamer":
+            db.update_streamer(row["id"], last_seen_at=time.time(), client_info=data.client)
         return {"ok": True, "version": VERSION}
 
     @app.get("/api/stream")
     async def stream(request: Request, ctx: tuple[dict, str] = Depends(auth)):
         row, _ = ctx
         sid = row["id"]
+        token = _token_from(request, None)
+        if sse_count[sid] >= 6:
+            raise HTTPException(429, "Zu viele offene Live-Ansichten für diesen Zugang.")
+        sse_count[sid] += 1
         queue = hub.subscribe(sid)
 
+        def still_valid() -> bool:
+            found = db.streamer_by_token(token)
+            return bool(found) and found[0]["id"] == sid
+
         async def gen():
+            checked = time.time()
             try:
                 yield f"data: {json.dumps({'type': 'status', 'status': manager.status(sid)})}\n\n"
                 while True:
                     if await request.is_disconnected():
                         break
+                    if time.time() - checked > 5:
+                        checked = time.time()
+                        if not still_valid():
+                            yield f"data: {json.dumps({'type': 'revoked'})}\n\n"
+                            break
                     try:
                         payload = await asyncio.wait_for(queue.get(), timeout=20)
                         yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
@@ -355,6 +436,7 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
                         yield f"data: {json.dumps({'type': 'status', 'status': manager.status(sid)})}\n\n"
             finally:
                 hub.unsubscribe(sid, queue)
+                sse_count[sid] = max(0, sse_count[sid] - 1)
 
         return StreamingResponse(gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
@@ -383,8 +465,47 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
             "model": getattr(manager.classifier, "model", "offline"),
             "ai_available": isinstance(manager.classifier, ClaudeClassifier),
             "tiktok_enabled": settings.tiktok_enabled,
+            "public_url": settings.public_url,
             "streamers": rows, "errors": errors[:50],
         }
+
+    @app.post("/api/admin/diagnose", dependencies=[Depends(admin)])
+    async def diagnose(data: DiagnoseIn):
+        limiter.hit("diagnose", 6, 60)
+        user = _clean_user(data.tiktok_user)
+        factory = source_factory or (lambda u: TikTokSource(u, settings.sign_api_key, settings.tiktok_proxy))
+        result: dict[str, Any] = {"user": user, "live": None, "connected_after_s": None, "comments": 0,
+                                  "viewers": 0, "error": None, "samples": []}
+        t0 = time.time()
+        try:
+            result["live"] = await asyncio.wait_for(factory(user).is_live(), timeout=20)
+        except Exception as exc:
+            result["error"] = redact(f"Live-Status: {type(exc).__name__}: {exc}")[:300]
+            return result
+        if not result["live"]:
+            return result
+        src = factory(user)
+
+        async def on_comment(c: dict) -> None:
+            result["comments"] += 1
+            if len(result["samples"]) < 3:
+                result["samples"].append(c["text"][:60])
+
+        def on_connected(_room: str) -> None:
+            result["connected_after_s"] = round(time.time() - t0, 1)
+
+        def on_viewers(n: int) -> None:
+            result["viewers"] = n
+
+        try:
+            await asyncio.wait_for(src.run(on_comment, on_connected, on_viewers), timeout=data.seconds)
+        except asyncio.TimeoutError:
+            pass
+        except Exception as exc:
+            result["error"] = redact(f"Chat: {type(exc).__name__}: {exc}")[:300]
+        finally:
+            await src.close()
+        return result
 
     @app.post("/api/admin/streamers", dependencies=[Depends(admin)])
     async def create_streamer(data: NewStreamerIn):

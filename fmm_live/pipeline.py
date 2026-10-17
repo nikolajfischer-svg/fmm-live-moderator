@@ -8,7 +8,7 @@ from collections import defaultdict
 
 from .ai import Classifier, Verdict
 from .db import Database
-from .rules import RANK, RuleEngine, RuleResult, merged_settings, simple_question
+from .rules import RANK, RuleEngine, RuleResult, looks_like_injection, merged_settings, simple_question
 
 log = logging.getLogger("fmm_live.pipeline")
 
@@ -58,6 +58,7 @@ class Pipeline:
         self._worker: asyncio.Task | None = None
         self.stats = {"comments": 0, "flagged": 0, "ai_calls": 0, "ai_errors": 0}
         self._budget_warned = False
+        self._urgent_seen: dict[str, float] = {}
 
     # -- Lebenszyklus --------------------------------------------------------
     def start(self) -> None:
@@ -144,6 +145,16 @@ class Pipeline:
             await self._process_batch(batch)
 
     async def _process_batch(self, batch: list[tuple[dict, RuleResult | None]]) -> None:
+        # Kommentare, die die KI ansprechen ("ignoriere deine Regeln ..."), werden einzeln geprueft,
+        # damit sie die Bewertung anderer Kommentare im selben Stapel nicht beeinflussen koennen.
+        suspicious = [b for b in batch if looks_like_injection(b[0]["text"]) or looks_like_injection(b[0].get("viewer_name", ""))]
+        if suspicious and len(batch) > 1:
+            clean = [b for b in batch if b not in suspicious]
+            if clean:
+                await self._process_batch(clean)
+            for item in suspicious:
+                await self._process_batch([item])
+            return
         items = [{"i": idx, "text": c["text"], "viewer_name": c.get("viewer_name", "")}
                  for idx, (c, _) in enumerate(batch)]
         try:
@@ -179,6 +190,12 @@ class Pipeline:
             if escalated != decision:
                 reason = f"{reason} (Wiederholungstäter, {strikes}. Verstoß)".strip()
                 decision = escalated
+        if decision == "dringend" and not comment.get("is_test"):
+            last = self._urgent_seen.get(key, 0.0)
+            if comment["ts"] - last < 300:
+                decision, reason = "beobachten", f"{reason} (weiterer dringender Hinweis desselben Zuschauers)".strip()
+            else:
+                self._urgent_seen[key] = comment["ts"]
         flagged = decision not in ("ok", "frage")
         ev = {
             "session_id": None if comment.get("is_test") else self.session_id,
@@ -201,7 +218,7 @@ class Pipeline:
             self.stats["flagged"] += 1 if flagged else 0
             if self.session_id:
                 self.db.bump_session(self.session_id, flagged)
-        self.hub.publish(self.streamer_id, {"type": "event", "event": ev})
+        self.hub.publish(self.streamer_id, {"type": "event", "event": ev, "stats": dict(self.stats)})
         future = comment.get("_future")
         if future is not None and not future.done():
             future.set_result(ev)

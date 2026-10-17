@@ -45,6 +45,10 @@ class Settings:
     price_out: float
     daily_budget_usd: float = 5.0
     tiktok_proxy: str = ""
+    operator_name: str = "Fischer Medien Management"
+    operator_address: str = ""
+    operator_email: str = ""
+    hosting_info: str = ""
     extra: dict = field(default_factory=dict)
 
     @property
@@ -84,4 +88,8 @@ def load_settings() -> Settings:
         price_out=float(os.environ.get("PRICE_OUT_PER_MTOK", p_out)),
         daily_budget_usd=float(os.environ.get("AI_DAILY_BUDGET_USD", "5")),
         tiktok_proxy=os.environ.get("TIKTOK_PROXY", "").strip(),
+        operator_name=os.environ.get("OPERATOR_NAME", "Fischer Medien Management").strip(),
+        operator_address=os.environ.get("OPERATOR_ADDRESS", "").strip(),
+        operator_email=os.environ.get("OPERATOR_EMAIL", "").strip(),
+        hosting_info=os.environ.get("HOSTING_INFO", "").strip(),
     )

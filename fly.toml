@@ -22,6 +22,11 @@ primary_region = "fra"   # Frankfurt (EU)
   auto_start_machines = true
   min_machines_running = 1
 
+  [http_service.concurrency]
+    type = "connections"
+    soft_limit = 150
+    hard_limit = 250
+
   [[http_service.checks]]
     grace_period = "15s"
     interval = "30s"
@@ -35,3 +40,7 @@ primary_region = "fra"   # Frankfurt (EU)
 
 [deploy]
   strategy = "immediate"
+
+[[restart]]
+  policy = "always"
+  retries = 10

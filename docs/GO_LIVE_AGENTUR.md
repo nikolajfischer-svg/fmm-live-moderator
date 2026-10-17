@@ -15,29 +15,25 @@ Die Software ist fertig und getestet. Online gehen kann sie erst, wenn ein Hosti
 6. **Datenschutzseite ergänzen:** In `fmm_live/static/datenschutz.html` Anschrift und E-Mail eintragen, oder mir die Daten geben.
 7. Mir Bescheid geben: „Fly ist eingeloggt“. Den Anthropic-Schlüssel nicht in den Chat schreiben, sondern selbst setzen (siehe B.3).
 
-## B. Deployment (mache ich, sobald Fly eingeloggt ist, oder du selbst)
+## B. Veröffentlichung + Abnahme (automatisch)
 
 ```powershell
-cd C:\Users\Nikolai\Desktop\FMM_Live_Moderator
-powershell -ExecutionPolicy Bypass -File scripts\deploy_fly.ps1 -AppName fmm-live-moderator
+.venv\Scripts\python scripts\cloud_release.py --app fmm-live-moderator --streamer "Name" --live-users user1,user2 `
+  --anthropic-key-file <datei> --model claude-haiku-5-5 --operator-email ... --operator-address "..."
 ```
 
-Das Skript
-1. legt die App in Frankfurt an (falls der Name vergeben ist, einen anderen wählen, z. B. `fmm-moderator-nf`),
-2. erstellt das 1-GB-Volume,
-3. erzeugt einen zufälligen `ADMIN_TOKEN` und speichert ihn in `ADMIN_TOKEN.txt` auf deinem Desktop,
-4. fragt den Anthropic-Schlüssel verdeckt ab und setzt ihn als Fly-Secret (er landet nie in einer Datei),
-5. deployt und prüft `/healthz`.
+Das Skript legt App und Volume in Frankfurt an, setzt die Secrets über stdin (kein Schlüssel auf der Kommandozeile) und baut in der Fly-Cloud. Danach folgt die Abnahme:
+- Sicherheits-Header, HTTPS, Admin- und Streamer-Zugriffsschutz, Datenschutzseite
+- **echter Verbindungstest Cloud → öffentliches TikTok-LIVE** (`/api/admin/diagnose`)
+- iPhone-Durchlauf mit Safari-Engine (WebKit, iPhone 15) gegen die Cloud
+- Widerruf: Ein erneuerter Link macht den alten sofort ungültig, und der Einladungslink hat keine Admin-Rechte
 
-## C. Abnahme nach dem Online-Gang (Pflicht vor dem Versand an den Streamer)
+Nur wenn alles bestanden ist, erzeugt es den Streamer-Link und schreibt `Desktop\FMM_Live_Moderator_LINKS.txt` mit Streamer-Link, fertiger WhatsApp-Nachricht und Admin-Link (`/admin#k=…`, meldet automatisch an).
 
-1. `https://<app>.fly.dev/admin` öffnen → mit dem `ADMIN_TOKEN` anmelden.
-2. Einen Test-Streamer anlegen, z. B. „Test Agentur“.
-3. Den Link auf dem iPhone öffnen und den Assistenten durchspielen. Als Benutzernamen einen Account nehmen, der **gerade LIVE** ist.
-4. **Prüfpunkt Cloud-IP:** „Verbindung testen“ muss „ist gerade LIVE“ melden, danach Bot aktivieren. Im Tab „Alle“ müssen innerhalb einer Minute echte Kommentare erscheinen.
-   - Klappt das nicht und das Dashboard zeigt „TikTok blockiert…“: kostenlosen Euler-Schlüssel holen (https://www.eulerstream.com → Community) und `fly secrets set SIGN_API_KEY=...` setzen. Wenn das nicht hilft, einen Proxy über `TIKTOK_PROXY` eintragen.
-5. Test-Streamer im Dashboard löschen.
-6. **Erst dann** den echten Streamer anlegen und den Link verschicken.
+## C. Automatischer Betrieb
+- Fly startet die Maschine bei Absturz neu (`[[restart]] policy = "always"`) und prüft alle 30 s `/healthz`.
+- Die Maschine schläft nie (`auto_stop_machines = "off"`, `min_machines_running = 1`).
+- Ein interner Wachhund startet alle 60 s beendete Bot-Wachdienste neu. Fehler im Wachdienst werden protokolliert, danach läuft er weiter.
 
 ## D. Streamer einladen
 

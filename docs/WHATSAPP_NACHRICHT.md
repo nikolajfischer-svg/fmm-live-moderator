@@ -6,7 +6,7 @@ Hi! 👋 Hier ist dein eigener **KI-Moderator für TikTok LIVE**.
 
 Er liest deinen LIVE-Chat mit, erkennt Beleidigungen, Spam, Belästigung und wichtige Fragen und sagt dir sofort, was zu tun ist. Er läuft in deiner eigenen Cloud, also auch wenn du nur mit dem iPhone streamst.
 
-👉 Hier einrichten (ca. 15 Min., alles im Browser): __LINK__
+👉 Hier einrichten (ca. 15 Min., alles im Browser): https://nikolajfischer-svg.github.io/fmm-live-moderator/
 
 Gut zu wissen:
 • Du brauchst kein TikTok-Passwort und musst nichts installieren.

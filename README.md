@@ -4,7 +4,7 @@ Dein eigener KI-Moderator für TikTok LIVE. Er läuft in **deiner eigenen Cloud*
 
 **➡️ Einrichtung für Streamer (Schritt für Schritt, auf Deutsch): [ANLEITUNG.md](ANLEITUNG.md)**
 
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/__OWNER__/fmm-live-moderator)
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/nikolajfischer-svg/fmm-live-moderator)
 
 - Erkennt Beleidigungen, Hass, sexuelle Belästigung, Drohungen, Spam, Links, Telefonnummern und Hinweise auf Selbstgefährdung. Hebt Fragen an dich hervor, mit Antwortidee.
 - Empfiehlt konkret, was zu tun ist („stummschalten empfohlen“). Ausgeführt wird in der TikTok-App: TikTok bietet keine offizielle Schnittstelle für automatische Moderation. Eine fertige Wortliste für TikToks eingebauten Schlüsselwortfilter liefert die App mit.

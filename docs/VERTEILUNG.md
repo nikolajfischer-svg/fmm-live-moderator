@@ -16,7 +16,7 @@ Die Agentur betreibt keine Server, sieht keine Passwörter oder Zahlungsdaten un
 **Folge:** Ohne zentralen Server gibt es kein zentrales Dashboard. Jeder Streamer sieht nur seinen eigenen Moderator. Die Agentur hilft im Bedarfsfall über die Anleitung, ohne selbst Zugriff zu haben.
 
 ## Der universelle Link
-`https://__OWNER__.github.io/fmm-live-moderator/` (eine Seite für alle Streamer: Kosten, 3 Schritte, Deploy-Button).
+`https://nikolajfischer-svg.github.io/fmm-live-moderator/` (eine Seite für alle Streamer: Kosten, 3 Schritte, Deploy-Button).
 
 ## Updates verteilen
 1. Code ändern, Version in `fmm_live/__init__.py` erhöhen, auf GitHub hochladen, Release anlegen.

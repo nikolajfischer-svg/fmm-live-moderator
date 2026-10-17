@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -576,6 +577,19 @@ def create_app(settings: Settings | None = None, *, source_factory: SourceFactor
             await bot.pipeline.stop()
         db.delete_streamer_data(sid)
         return {"ok": True}
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error(_request: Request, exc: RequestValidationError):
+        fields = {str(e.get("loc", [""])[-1]) for e in exc.errors()}
+        if "tiktok_user" in fields:
+            msg = "Bitte einen gültigen TikTok-Benutzernamen eingeben (2 bis 40 Zeichen)."
+        elif "text" in fields:
+            msg = "Bitte eine Nachricht mit 1 bis 300 Zeichen eingeben."
+        elif "name" in fields:
+            msg = "Bitte einen Namen mit 1 bis 80 Zeichen eingeben."
+        else:
+            msg = "Die Eingabe ist ungültig oder zu lang. Bitte prüfen und erneut versuchen."
+        return JSONResponse({"detail": msg}, status_code=422)
 
     @app.exception_handler(HTTPException)
     async def http_error(_request: Request, exc: HTTPException):

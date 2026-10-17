@@ -302,3 +302,10 @@ def test_claim_disabled_in_agency_mode(setup):
     client, *_ = setup
     assert client.get("/api/claim-status").json()["claimable"] is False
     assert client.post("/api/claim", json={"name": "X"}).status_code == 409
+
+
+def test_validation_errors_are_german(setup):
+    client, *_ = setup
+    t = new_streamer(client)
+    r = client.put("/api/profile", json={"tiktok_user": "x" * 60}, headers=auth(t))
+    assert r.status_code == 422 and "TikTok-Benutzernamen" in r.json()["detail"]

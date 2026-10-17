@@ -82,7 +82,7 @@ async function boot() {
 function renderClaim(cs) {
   view.innerHTML = `<div class="card"><h1>Willkommen bei deinem eigenen Live Moderator 🎉</h1>
     <p>Dein Server läuft. Jetzt machen wir ihn zu <b>deinem</b> Moderator. Das passiert nur ein einziges Mal.</p>
-    ${cs.ai_available ? "" : `<div class="note warn">Hinweis: Es ist noch kein KI-Schlüssel hinterlegt. Der Moderator arbeitet dann nur mit Regeln. Den Schlüssel kannst du später beim Hosting-Anbieter unter „Environment“ als ANTHROPIC_API_KEY eintragen.</div>`}
+    ${cs.ai_available ? "" : `<div class="note warn">Hinweis: Es ist noch kein KI-Schlüssel hinterlegt. Der Moderator arbeitet dann nur mit Regeln. Du kannst ihn später eintragen: Render → dein Dienst → „Environment“ → ANTHROPIC_API_KEY → speichern.</div>`}
     <label for="cn">Wie heißt du? (Vorname oder Künstlername)</label>
     <input type="text" id="cn" maxlength="80" autocomplete="nickname">
     ${cs.needs_key ? `<label for="ck">Admin-Schlüssel</label><input type="text" id="ck" autocomplete="off" spellcheck="false">

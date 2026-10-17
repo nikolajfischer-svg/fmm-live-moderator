@@ -74,12 +74,16 @@ def main():
         sh([GH, "release", "create", tag, "-R", f"{owner}/{REPO}", "--title", f"FMM Live Moderator {tag}",
             "--notes", notes, str(ROOT / "ANLEITUNG.md")])
 
-    # Pruefstrasse mit Cloud-Verbindungstest starten
+    # Pruefstrasse (nur wenn als Workflow aktiviert)
     time.sleep(5)
-    args = [GH, "workflow", "run", "ci.yml", "-R", f"{owner}/{REPO}", "--ref", "main"]
-    if a.live_users:
+    if not (ROOT / ".github" / "workflows" / "ci.yml").exists():
+        print("Pruefstrasse nicht aktiviert (Vorlage unter ci/).")
+        a.live_users = None
+    args = None if a.live_users is None else [GH, "workflow", "run", "ci.yml", "-R", f"{owner}/{REPO}", "--ref", "main"]
+    if args and a.live_users:
         args += ["-f", f"live_users={a.live_users}"]
-    sh(args, check=False)
+    if args:
+        sh(args, check=False)
     print("\nUniverseller Link:", pages)
     print("Repository:", f"https://github.com/{owner}/{REPO}")
     print("Deploy-Button:", f"https://render.com/deploy?repo=https://github.com/{owner}/{REPO}")

@@ -23,6 +23,6 @@ Die Agentur betreibt keine Server, sieht keine Passwörter oder Zahlungsdaten un
 2. Streamer aktualisieren selbst: Render → ihr Dienst → **Manual Deploy → Deploy latest commit**.
    Auto-Deploy ist bewusst aus, damit kein Update ungefragt mitten im LIVE kommt.
 
-## Cloud-Verbindungstest (kostenlos)
-GitHub → Actions → „Prüfung“ → **Run workflow** → bei `live_users` 2–3 gerade laufende TikTok-LIVEs eintragen.
+## Cloud-Verbindungstest (kostenlos, optional)
+Die Prüfstraße liegt als Vorlage unter `ci/github-actions-pruefung.yml`. Zum Aktivieren nach `.github/workflows/` verschieben (erfordert die GitHub-Berechtigung „workflow“). Danach: GitHub → Actions → „Prüfung“ → **Run workflow** → bei `live_users` 2–3 gerade laufende TikTok-LIVEs eintragen.
 Der Test baut den Container, richtet ihn ein, startet ihn neu und liest echten LIVE-Chat von einer Rechenzentrums-IP.

@@ -3,7 +3,7 @@
 ## v1.1.0 (17.10.2026): Self-Hosting je Streamer
 - 28 automatische Tests grün, darunter: Ersteinrichtung, zweite Übernahme abgelehnt, abgelaufenes Fenster nur mit ADMIN_TOKEN, im Agenturmodus gesperrt
 - Unabhängige Sicherheitsprüfung (kein kritischer Befund) umgesetzt: Widerruf trennt offene Live-Verbindungen, CSP/HSTS, Größen- und Ratenlimits, Prompt-Injection-Isolation, Admin nur per Header, secure_delete, bereinigte Fehlertexte, Volume-Rechte
-- iPhone-Durchlauf mit Safari-Engine (WebKit, iPhone 15): Ersteinrichtung → Assistent → Bot aktiv → echter LIVE-Chat (@p4wnyhof) → Berichte → Einstellungen → Anleitung → Neu laden: **alles OK**, keine CSP- oder JS-Fehler
+- iPhone-Durchlauf mit Safari-Engine (WebKit, iPhone 15): Ersteinrichtung → Assistent → Bot aktiv → echter LIVE-Chat → Berichte → Einstellungen → Anleitung → Neu laden: **alles OK**, keine CSP- oder JS-Fehler
 - Rauchtest-Skript (wie in der Prüfstraße), lokal: Ersteinrichtung, Rechte, CSP, TikTok-Diagnose, Neustart mit Datenerhalt: **OK**
 - Offen: Container-Build und TikTok-Test von einer Rechenzentrums-IP. Läuft automatisch in GitHub Actions, sobald das Repository veröffentlicht ist. Ein echter Render-Deploy ist erst mit dem ersten Streamer-Konto möglich.
 

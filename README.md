@@ -31,4 +31,4 @@ python -m venv .venv; .venv\Scripts\pip install -r requirements.txt pytest httpx
 .venv\Scripts\python -m pytest -q
 $env:SELF_HOSTED="true"; .venv\Scripts\python -m fmm_live.web     # http://localhost:8000/app
 ```
-Aufbau: `fmm_live/` (FastAPI, Regel-Engine, Claude-Klassifizierer, TikTok-Lesezugang, Oberfläche ohne Build-Schritt), `render.yaml` (Ein-Klick-Bereitstellung), `Dockerfile`, `.github/workflows/ci.yml` (Tests, Container-Test, optional TikTok-Test von einer Rechenzentrums-IP).
+Aufbau: `fmm_live/` (FastAPI, Regel-Engine, Claude-Klassifizierer, TikTok-Lesezugang, Oberfläche ohne Build-Schritt), `render.yaml` (Ein-Klick-Bereitstellung), `Dockerfile`, `ci/github-actions-pruefung.yml` (Vorlage: Tests, Container-Test, optional TikTok-Test von einer Rechenzentrums-IP).
